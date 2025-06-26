@@ -1,0 +1,9 @@
+users:
+  - username: raju
+    roles: [AmazonEC2ContainerRegistryPowerUser]
+  - username: sham
+    roles: [AmazonS3ReadOnlyAccess]
+  - username: baburao
+    roles: [AmazonS3ReadOnlyAccess, AmazonEC2ContainerRegistryPowerUser]
+
+
