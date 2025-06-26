@@ -1,0 +1,27 @@
+import docker
+inport smtplib
+   from email.text import MIMEText
+
+   client = docker.from_env()
+
+   def check_container(my-test-container):
+   try:
+   container = client.containers.get(my-test-container)
+   if container.status != 'running':
+       container.restart()
+       send_alert(my-test-container)
+       print (f "{my-test-container} is not running. restarted")
+              else:
+                print (f "{my-test-container} is  running")
+        expect docker.errors,notfound:
+
+        print (f "{my-test-container} not found")
+
+        def send_alert(my-test-container):
+
+            msg = MIMEText(f"the container'{my-test-container}' is down and ha been restart.")
+            msg = ['subject'] = f "alert: {my-test-container} reasart"
+            msg = ['form'] = 'kashwin777@gmail.com'
+            msg = ['to'] = 'admin@gmail.com'
+
+            smtplib.SMTP ('kashwin777@gmail.com')

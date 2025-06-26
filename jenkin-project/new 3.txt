@@ -1,0 +1,112 @@
+---
+# FILE: .github/workflows/deploy.yaml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: ghcr.io/your-org
+      IMAGE_NAME: your-app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/your-org/your-app:${{ github.sha }}
+
+      - name: Update Kustomize with new image tag
+        run: |
+          cd deploy/overlays/prod
+          kustomize edit set image your-app=ghcr.io/your-org/your-app:${{ github.sha }}
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git commit -am "Update image tag to ${{ github.sha }}"
+          git push
+
+---
+# FILE: deploy/overlays/prod/kustomization.yaml
+resources:
+  - ../../base
+images:
+  - name: your-app
+    newTag: latest # Updated dynamically by pipeline
+
+---
+# FILE: deploy/base/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: your-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: your-app
+  template:
+    metadata:
+      labels:
+        app: your-app
+    spec:
+      containers:
+        - name: your-app
+          image: ghcr.io/your-org/your-app:latest
+          ports:
+            - containerPort: 8080
+
+---
+# FILE: deploy/base/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: your-app
+spec:
+  type: ClusterIP
+  selector:
+    app: your-app
+  ports:
+    - port: 80
+      targetPort: 8080
+
+---
+# FILE: argocd-app.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: your-app
+  namespace: argocd
+spec:
+  destination:
+    namespace: your-app
+    server: https://kubernetes.default.svc
+  source:
+    repoURL: https://github.com/your-org/your-repo.git
+    targetRevision: main
+    path: deploy/overlays/prod
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
